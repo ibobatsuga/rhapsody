@@ -79,7 +79,7 @@ export class AIService {
               audioUrls: data.audioUrls || [],
               vocalStemUrl: data.vocalStemUrl,
               instrumentalStemUrl: data.instrumentalStemUrl,
-              duration: data.duration || 32,
+              duration: data.duration || 180,
               createdAt: Date.now()
             });
           } else if (data.status === 'failed' || data.status === 'error') {
@@ -100,85 +100,141 @@ export class AIService {
   }
 
   /**
-   * AI Lyrics Generator Assistant (similar to Suno's AI Lyric Generator)
+   * AI Lyrics Generator Assistant
    */
   public static generateRandomLyrics(topic: string, genre: string): string {
     const themes = [
-      `[Verse 1]\nNeon lights reflect the rainy street\nEchoes of the city in my beat\nChasing shadows under velvet skies\nNo more questions, no more compromises\n\n[Chorus]\nTake me higher through the neon haze\nLost inside this electric maze\nWe are timeless, running with the sound\nFeet won't ever touch the ground\n\n[Verse 2]\nFrequencies are buzzing through the air\nAnalog warmth is everywhere\nFeel the sub-bass shaking in the night\nEverything is gonna be alright\n\n[Outro]\nLost in the frequency...\nJust you and me...`,
-      `[Verse 1]\nSunlight fades behind the coastal hills\nSipping coffee, watching time stand still\nAcoustic chords are floating in the breeze\nWhispers dancing through the olive trees\n\n[Chorus]\nHere's to the moments that we never planned\nFootprints washing away in the sand\nLet the ocean carry us away\nInto the golden light of another day\n\n[Outro]\nAnother day...\nCarry us away...`,
-      `[Verse 1]\nHeavy distortion in the engine roar\nWe've never felt this alive before\nBreaking out of the cybernetic cage\nTurning over a brand new page\n\n[Chorus]\nIgnite the spark, break through the firewall\nStanding tall against the digital wall\nUnstoppable force, unbroken chain\nRunning free through the acid rain\n\n[Outro]\nUnstoppable...\nRunning free...`
+      `[Verse 1]\nSepi membisu di sudut malam ini\nLampu berpendar di antara bayang sunyi\nKenangan manis kembali terulang lagi\nTakkan pernah hilang dari relung hati\n\n[Chorus]\nBagaikan lampu yang tak pernah mati\nTerang menyala di kegelapan abadi\nWalau badai menerjang takkan berhenti\nCinta sejati abadi di hati\n\n[Outro]\nTak pernah mati...\nAbadi di hati...`,
+      `[Verse 1]\nNeon lights reflect the rainy street\nEchoes of the city in my beat\nChasing shadows under velvet skies\nNo more questions, no more compromises\n\n[Chorus]\nTake me higher through the neon haze\nLost inside this electric maze\nWe are timeless, running with the sound\nFeet won't ever touch the ground\n\n[Outro]\nLost in the frequency...\nJust you and me...`,
+      `[Verse 1]\nPetikan gitar mengalun syahdu di pelataran\nLangkah perlahan menanti kepastian\nJanji suci terukir dalam genggaman\nMenemani setiap helaan nafas impian\n\n[Chorus]\nHari bahagia yang kita nantikan berdua\nMenyatukan dua jiwa dalam bahagia\nKisah abadi hingga menua bersama\nDalam irama cinta yang sempurna`
     ];
     return themes[Math.floor(Math.random() * themes.length)];
   }
 
   /**
-   * Initial Curated Songs (Explore Feed)
+   * Curated Songs from Suno Workspace
    */
   public static getInitialExploreSongs(): Song[] {
     return [
       {
-        id: 'suno_exp_1',
-        title: 'Neon Odyssey',
-        prompt: 'Synthwave 80s anthem with retro arpeggiated synths, energetic drums, and soaring vocals',
-        tags: 'synthwave, electronic, retro, 80s, melodic',
-        lyrics: '[Verse 1]\nNeon lights reflect the rainy street...\n[Chorus]\nTake me higher through the neon haze...',
+        id: 'suno_ws_1',
+        title: 'Bill Osmena - D Nae (Wedding Instrumental)',
+        prompt: 'piano pop, folk-pop, wedding instrumental, fingerpicked acoustic guitar, nylon-string arpeggios, upright bass, brushed sn...',
+        tags: 'piano pop, folk-pop, wedding, acoustic, nylon string',
+        isInstrumental: true,
+        provider: 'suno',
+        model: 'v6-mini',
+        modelBadge: 'V6-MINI',
+        extendCount: 1,
+        audioUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=400&fit=crop',
+        duration: 162,
+        createdAt: 'Oct 14',
+        dateGroup: 'Wednesday, Oct 14',
+        status: 'complete',
+        vocalStemUrl: 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
+        instrumentalStemUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        isLiked: false
+      },
+      {
+        id: 'suno_ws_2',
+        title: 'Bill Osmena - D Nae (Wedding Instrumental)',
+        prompt: 'piano pop, folk-pop, wedding instrumental, fingerpicked acoustic guitar, nylon-string arpeggios, upright bass, brushed sn...',
+        tags: 'piano pop, folk-pop, wedding, acoustic',
+        isInstrumental: true,
+        provider: 'suno',
+        model: 'v6-mini',
+        modelBadge: 'V6-MINI',
+        extendCount: 1,
+        audioUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        imageUrl: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=400&fit=crop',
+        duration: 163,
+        createdAt: 'Oct 14',
+        dateGroup: 'Wednesday, Oct 14',
+        status: 'complete',
+        vocalStemUrl: 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
+        instrumentalStemUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        isLiked: false
+      },
+      {
+        id: 'suno_ws_3',
+        title: 'Seperti Mati Lampu',
+        prompt: 'Funkot with metallic robotic synthesizer and supersaw riser sweeps, half-time brostep breakdowns, extreme drop dynamics, glitch-chopped ken...',
+        tags: 'funkot, electro, brostep, koplo, synthesizer',
+        lyrics: '[Verse]\nBagaikan lampu padam di tengah malam...\n[Chorus]\nSeperti mati lampu ya sayang, seperti mati lampu...',
         isInstrumental: false,
         provider: 'suno',
-        model: 'v4',
+        model: 'v6',
+        modelBadge: 'V6',
+        isCover: true,
         audioUrl: 'https://actions.google.com/sounds/v1/music/ambient_hum.ogg',
         imageUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=400&fit=crop',
-        duration: 184,
-        createdAt: '1 hour ago',
+        duration: 228,
+        createdAt: 'Sep 13',
+        dateGroup: 'Sunday, Sep 13',
         status: 'complete',
         vocalStemUrl: 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
         instrumentalStemUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
         isLiked: true
       },
       {
-        id: 'suno_exp_2',
-        title: 'Tokyo Midnight Rain',
-        prompt: 'Lo-fi chill hip hop, mellow rhodes piano, rainy day vinyl crackle, relaxed bassline',
-        tags: 'lo-fi, chillhop, jazzy, relaxed, ambient',
-        isInstrumental: true,
-        provider: 'suno',
-        model: 'v3.5',
-        audioUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
-        imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
-        duration: 156,
-        createdAt: '3 hours ago',
-        status: 'complete',
-        isLiked: false
-      },
-      {
-        id: 'suno_exp_3',
-        title: 'Cyber Valkyrie',
-        prompt: 'Dark electro industrial cyberpunk with gritty distorted bass and aggressive female vocal',
-        tags: 'cyberpunk, darksynth, industrial, bass, heavy',
-        lyrics: '[Verse]\nHeavy distortion in the engine roar...\n[Chorus]\nIgnite the spark...',
+        id: 'suno_ws_4',
+        title: 'Seperti Mati Lampu',
+        prompt: 'Female biduan lead, husky tone with thick melismatic cengkok and sliding portamento, occasional robotic pitch-shifted vocal chops; Funkot, drivi...',
+        tags: 'funkot, cengkok, female vocal, dangdut koplo',
+        lyrics: '[Verse]\nMelangkah pelan diiringi irama...\n[Chorus]\nSeperti mati lampu ya sayang...',
         isInstrumental: false,
-        provider: 'udio',
-        model: 'v1.5',
+        provider: 'suno',
+        model: 'v6',
+        modelBadge: 'V6',
+        isCover: true,
         audioUrl: 'https://actions.google.com/sounds/v1/music/ambient_hum.ogg',
         imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&h=400&fit=crop',
-        duration: 210,
-        createdAt: '5 hours ago',
+        duration: 228,
+        createdAt: 'Sep 13',
+        dateGroup: 'Sunday, Sep 13',
         status: 'complete',
-        isLiked: true
+        vocalStemUrl: 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
+        instrumentalStemUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        isLiked: false
       },
       {
-        id: 'suno_exp_4',
-        title: 'Golden Sunset Acoustic',
-        prompt: 'Warm indie acoustic pop song, fingerstyle acoustic guitar, gentle vocals, uplifting melody',
-        tags: 'indie pop, acoustic, folk, warm, feelgood',
-        isInstrumental: false,
+        id: 'suno_ws_5',
+        title: 'Seperti Mati Lampu',
+        prompt: 'Funkot, driving kendang koplo drum rolls with Jaipongan-influenced tak-dang-dut stutters, keyboard and organ tunggal melody, 132 BPM four-on-...',
+        tags: 'funkot, kendang koplo, jaipongan, organ tunggal',
+        isInstrumental: true,
         provider: 'suno',
-        model: 'v4',
+        model: 'v6',
+        modelBadge: 'V6',
+        isCover: true,
         audioUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
-        imageUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400&h=400&fit=crop',
-        duration: 172,
-        createdAt: 'Yesterday',
+        imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
+        duration: 227,
+        createdAt: 'Sep 13',
+        dateGroup: 'Sunday, Sep 13',
         status: 'complete',
         isLiked: false
+      },
+      {
+        id: 'suno_ws_6',
+        title: 'Dumes',
+        prompt: 'Indonesian Javanese pop ballad with acoustic guitar, emotive strings, and modern synth pad accents',
+        tags: 'javanese pop, ballad, emotive, acoustic guitar',
+        lyrics: '[Verse]\nSepine wengi iki ngelingke kowe...\n[Chorus]\nRa kuat aku nyonggo loro iki...',
+        isInstrumental: false,
+        provider: 'suno',
+        model: 'v6-mini',
+        modelBadge: 'V6-MINI',
+        audioUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        imageUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400&h=400&fit=crop',
+        duration: 215,
+        createdAt: 'Sep 10',
+        dateGroup: 'Sunday, Sep 13',
+        status: 'complete',
+        vocalStemUrl: 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
+        instrumentalStemUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        isLiked: true
       }
     ];
   }

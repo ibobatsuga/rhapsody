@@ -1,5 +1,5 @@
 export type AIProvider = 'suno' | 'udio';
-export type AppTab = 'create' | 'explore' | 'library';
+export type AppTab = 'create' | 'studio' | 'explore' | 'library';
 
 export interface Song {
   id: string;
@@ -14,10 +14,27 @@ export interface Song {
   imageUrl: string;
   duration: number; // in seconds
   createdAt: string;
+  dateGroup?: string; // e.g. "Wednesday, Oct 14"
   status: 'queued' | 'generating' | 'complete' | 'failed';
   vocalStemUrl?: string;
   instrumentalStemUrl?: string;
   isLiked?: boolean;
+  isDisliked?: boolean;
+  modelBadge?: string; // e.g. "V6-MINI", "V4", "V6"
+  isCover?: boolean;
+  extendCount?: number;
+}
+
+export interface StudioTrack {
+  id: string;
+  name: string;
+  type: 'full' | 'vocal' | 'instrumental' | 'custom';
+  color: string;
+  muted: boolean;
+  solo: boolean;
+  volume: number;
+  pan: number;
+  audioUrl?: string;
 }
 
 export interface AIGenerationRequest {
@@ -29,6 +46,12 @@ export interface AIGenerationRequest {
   lyrics?: string;
   apiKey?: string;
   mock?: boolean;
+  vocalGender?: 'male' | 'female' | 'any';
+  weirdness?: number;
+  styleInfluence?: number;
+  variety?: string;
+  durationMode?: 'auto' | 'custom';
+  maxMode?: boolean;
 }
 
 export interface AIGenerationResult {
