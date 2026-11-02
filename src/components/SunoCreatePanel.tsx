@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AIProvider } from '../types';
 import { AIService } from '../services/aiService';
 import { 
