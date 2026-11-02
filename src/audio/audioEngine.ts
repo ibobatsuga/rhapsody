@@ -19,11 +19,9 @@ class AudioEngine {
   // Active buffer source nodes playing on timeline
   private activeSources: AudioBufferSourceNode[] = [];
 
-  constructor() {
-    // AudioContext will be initialized on user gesture
-  }
+  constructor() {}
 
-  public init() {
+  public init(): AudioContext {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       this.ctx = new AudioCtx({ sampleRate: 44100 });
@@ -31,20 +29,36 @@ class AudioEngine {
       this.masterGain.gain.value = 0.85;
       this.masterGain.connect(this.ctx.destination);
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    return this.ctx;
+  }
+
+  public async resume(): Promise<void> {
+    const ctx = this.init();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
     }
   }
 
   public getContext(): AudioContext {
-    this.init();
-    return this.ctx!;
+    return this.init();
   }
 
   public setMasterVolume(val: number) {
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(Math.max(0, Math.min(1.5, val)), this.ctx.currentTime);
+      const clamped = Math.max(0, Math.min(1.5, Number.isFinite(val) ? val : 0.85));
+      this.masterGain.gain.setValueAtTime(clamped, this.ctx.currentTime);
     }
+  }
+
+  /**
+   * Clamps filter frequency strictly below the Nyquist limit (sampleRate / 2)
+   * to prevent DOMException RangeError in WebAudio implementations.
+   */
+  private getSafeFilterCutoff(requestedHz: number): number {
+    const ctx = this.getContext();
+    const nyquistLimit = (ctx.sampleRate / 2) - 100;
+    const safeRequested = Number.isFinite(requestedHz) ? requestedHz : 20000;
+    return Math.max(20, Math.min(safeRequested, nyquistLimit));
   }
 
   public registerTrack(track: Track) {
@@ -59,10 +73,10 @@ class AudioEngine {
     const filter = ctx.createBiquadFilter();
 
     filter.type = track.effects.filterType || 'lowpass';
-    filter.frequency.value = track.effects.filterCutoff || 20000;
+    filter.frequency.value = this.getSafeFilterCutoff(track.effects.filterCutoff);
 
-    gain.gain.value = track.muted ? 0 : track.volume;
-    panner.pan.value = track.pan;
+    gain.gain.value = track.muted ? 0 : Math.max(0, Math.min(1.5, track.volume));
+    panner.pan.value = Math.max(-1, Math.min(1, track.pan));
 
     // Chain: Track Source -> Filter -> Pan -> Gain -> Master
     filter.connect(panner);
@@ -76,11 +90,15 @@ class AudioEngine {
     const nodes = this.trackNodes.get(track.id);
     if (!nodes || !this.ctx) return;
 
-    const effectiveGain = track.muted ? 0 : track.volume;
+    const safeVolume = Math.max(0, Math.min(1.5, Number.isFinite(track.volume) ? track.volume : 0.9));
+    const effectiveGain = track.muted ? 0 : safeVolume;
+    const safePan = Math.max(-1, Math.min(1, Number.isFinite(track.pan) ? track.pan : 0));
+    const safeCutoff = this.getSafeFilterCutoff(track.effects.filterCutoff);
+
     nodes.gain.gain.setValueAtTime(effectiveGain, this.ctx.currentTime);
-    nodes.panner.pan.setValueAtTime(track.pan, this.ctx.currentTime);
+    nodes.panner.pan.setValueAtTime(safePan, this.ctx.currentTime);
     nodes.filter.type = track.effects.filterType || 'lowpass';
-    nodes.filter.frequency.setValueAtTime(track.effects.filterCutoff || 20000, this.ctx.currentTime);
+    nodes.filter.frequency.setValueAtTime(safeCutoff, this.ctx.currentTime);
   }
 
   public unregisterTrack(trackId: string) {
@@ -96,21 +114,17 @@ class AudioEngine {
   /**
    * Start playback from current timeline position
    */
-  public play(tracks: Track[], bpm: number, onUpdate?: (time: number) => void) {
-    this.init();
+  public async play(tracks: Track[], bpm: number, onUpdate?: (time: number) => void) {
+    await this.resume();
     if (this.isPlaying) return;
 
     this.isPlaying = true;
     const ctx = this.getContext();
     this.playStartTime = ctx.currentTime - this.currentTime;
 
-    // Check if any track has solo
     const hasSolo = tracks.some(t => t.solo);
-
-    // Stop old active sources
     this.stopSources();
 
-    // Schedule clips to play
     tracks.forEach(track => {
       this.registerTrack(track);
       const nodes = this.trackNodes.get(track.id);
@@ -125,7 +139,6 @@ class AudioEngine {
         const clipStart = clip.startTime;
         const clipEnd = clip.startTime + clip.duration;
 
-        // If current playhead is before or inside this clip
         if (this.currentTime < clipEnd) {
           const source = ctx.createBufferSource();
           source.buffer = clip.audioBuffer;
@@ -134,13 +147,20 @@ class AudioEngine {
           const offsetInClip = Math.max(0, this.currentTime - clipStart);
           const delayUntilPlay = Math.max(0, clipStart - this.currentTime);
 
+          // Auto garbage-collect finished source nodes to prevent memory leaks
+          source.onended = () => {
+            const index = this.activeSources.indexOf(source);
+            if (index !== -1) {
+              this.activeSources.splice(index, 1);
+            }
+          };
+
           source.start(ctx.currentTime + delayUntilPlay, offsetInClip);
           this.activeSources.push(source);
         }
       });
     });
 
-    // Start time ticker
     const tick = () => {
       if (!this.isPlaying) return;
       this.currentTime = ctx.currentTime - this.playStartTime;
@@ -186,6 +206,7 @@ class AudioEngine {
   private stopSources() {
     this.activeSources.forEach(src => {
       try {
+        src.onended = null;
         src.stop();
         src.disconnect();
       } catch (e) {}
@@ -197,20 +218,23 @@ class AudioEngine {
    * Load audio file from URL and decode to AudioBuffer
    */
   public async loadAudio(url: string): Promise<AudioBuffer> {
+    await this.resume();
     const ctx = this.getContext();
 
-    // Use backend proxy to avoid CORS issues with third-party CDNs
     const proxyUrl = url.startsWith('http') && !url.includes(window.location.host)
       ? `/api/ai/proxy-audio?url=${encodeURIComponent(url)}`
       : url;
 
     const response = await fetch(proxyUrl);
+    if (!response.ok) {
+      throw new Error(`Audio load HTTP error: ${response.status}`);
+    }
     const arrayBuffer = await response.arrayBuffer();
     return await ctx.decodeAudioData(arrayBuffer);
   }
 
   /**
-   * Synthesize Drum Pad Sounds (Kick, Snare, HiHat, Clap, 808, etc.)
+   * Synthesize Drum Pad Sounds
    */
   public playDrumSound(type: string, pitch = 1.0) {
     this.init();
@@ -232,7 +256,6 @@ class AudioEngine {
         break;
       }
       case 'snare': {
-        // Noise + tone
         const osc = ctx.createOscillator();
         const toneGain = ctx.createGain();
         osc.type = 'triangle';
@@ -244,8 +267,7 @@ class AudioEngine {
         osc.start(now);
         osc.stop(now + 0.15);
 
-        // White noise burst
-        const bufferSize = ctx.sampleRate * 0.2;
+        const bufferSize = Math.floor(ctx.sampleRate * 0.2);
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
@@ -263,9 +285,8 @@ class AudioEngine {
         noise.start(now);
         break;
       }
-      case 'hihat_closed':
       case 'hihat': {
-        const bufferSize = ctx.sampleRate * 0.05;
+        const bufferSize = Math.floor(ctx.sampleRate * 0.05);
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
@@ -284,7 +305,7 @@ class AudioEngine {
         break;
       }
       case 'clap': {
-        const bufferSize = ctx.sampleRate * 0.25;
+        const bufferSize = Math.floor(ctx.sampleRate * 0.25);
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
@@ -332,7 +353,7 @@ class AudioEngine {
   }
 
   /**
-   * Play a Polyphonic Synth Note (e.g. from Piano Roll or Virtual Keyboard)
+   * Play a Polyphonic Synth Note
    */
   public playSynthNote(freq: number, type: OscillatorType = 'sawtooth', duration = 0.5) {
     this.init();
@@ -344,7 +365,7 @@ class AudioEngine {
     const gain = ctx.createGain();
 
     osc.type = type;
-    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.setValueAtTime(Math.max(20, Math.min(10000, freq)), now);
 
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(2500, now);
@@ -362,22 +383,24 @@ class AudioEngine {
   }
 
   /**
-   * Generate a Synthetic Audio Buffer (For AI simulation or instant demo loops)
+   * Generate a Synthetic Audio Buffer with validation
    */
   public createSyntheticMusicLoop(genre: string, durationSec = 8, bpm = 120): AudioBuffer {
     const ctx = this.getContext();
     const sampleRate = ctx.sampleRate;
-    const length = Math.floor(sampleRate * durationSec);
+    const safeDuration = Math.max(1, Math.min(120, durationSec));
+    const length = Math.floor(sampleRate * safeDuration);
     const buffer = ctx.createBuffer(2, length, sampleRate);
     const left = buffer.getChannelData(0);
     const right = buffer.getChannelData(1);
 
-    const beatInterval = 60 / bpm;
+    const safeBpm = Math.max(40, Math.min(260, bpm));
+    const beatInterval = 60 / safeBpm;
     const chordFrequencies = [
-      [220, 261.63, 329.63], // Am (A3, C4, E4)
-      [174.61, 220, 261.63], // F (F3, A3, C4)
-      [261.63, 329.63, 392], // C (C4, E4, G4)
-      [196, 246.94, 293.66]  // G (G3, B3, D4)
+      [220, 261.63, 329.63],
+      [174.61, 220, 261.63],
+      [261.63, 329.63, 392],
+      [196, 246.94, 293.66]
     ];
 
     for (let i = 0; i < length; i++) {
@@ -386,26 +409,22 @@ class AudioEngine {
       const chordIndex = Math.floor((t / (beatInterval * 4)) % chordFrequencies.length);
       const freqs = chordFrequencies[chordIndex];
 
-      // Pad chord synth
       let sample = 0;
       freqs.forEach(f => {
         sample += Math.sin(2 * Math.PI * f * t) * 0.12;
-        sample += Math.sin(2 * Math.PI * (f * 1.005) * t) * 0.08; // Chorus detune
+        sample += Math.sin(2 * Math.PI * (f * 1.005) * t) * 0.08;
       });
 
-      // Bassline pulse
       const bassFreq = freqs[0] / 2;
       const bassEnv = Math.exp(-((t % beatInterval) * 4));
       sample += Math.sin(2 * Math.PI * bassFreq * t) * 0.3 * bassEnv;
 
-      // Drum kick on beat 0 & 2
       if (beat < 0.2 || (beat > 2.0 && beat < 2.2)) {
         const kickTime = (t % (beatInterval * 2));
         const kickPitch = Math.max(30, 140 * Math.exp(-kickTime * 25));
         sample += Math.sin(2 * Math.PI * kickPitch * kickTime) * 0.45 * Math.exp(-kickTime * 15);
       }
 
-      // Snare on beat 1 & 3
       if ((beat > 1.0 && beat < 1.2) || (beat > 3.0 && beat < 3.2)) {
         const noise = (Math.random() * 2 - 1) * 0.25;
         sample += noise;
