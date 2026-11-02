@@ -4,228 +4,227 @@ import {
   Pause, 
   Square, 
   RotateCcw, 
-  FastForward, 
-  Folder, 
-  SlidersHorizontal, 
-  Mic, 
+  Repeat, 
+  Volume2, 
+  Sparkles, 
+  Sliders, 
+  Music, 
   Settings, 
-  Sparkles
+  CircleDot,
+  Radio
 } from 'lucide-react';
 
 interface HeaderProps {
   isPlaying: boolean;
   currentTime: number;
   bpm: number;
+  masterVolume: number;
+  isLooping: boolean;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
   onRewind: () => void;
-  onFastForward: () => void;
-  onToggleConsole: () => void;
+  onToggleLoop: () => void;
+  onBpmChange: (bpm: number) => void;
+  onMasterVolumeChange: (vol: number) => void;
   onOpenDrumPads: () => void;
   onOpenSynth: () => void;
+  onOpenEffects: () => void;
   onToggleAIAssistant: () => void;
   onOpenSettings: () => void;
   isAIDrawerOpen: boolean;
-  isConsoleOpen: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   isPlaying,
   currentTime,
   bpm,
+  masterVolume,
+  isLooping,
   onPlay,
   onPause,
   onStop,
   onRewind,
-  onFastForward,
-  onToggleConsole,
+  onToggleLoop,
+  onBpmChange,
+  onMasterVolumeChange,
   onOpenDrumPads,
   onOpenSynth,
+  onOpenEffects,
   onToggleAIAssistant,
   onOpenSettings,
-  isAIDrawerOpen,
-  isConsoleOpen
+  isAIDrawerOpen
 }) => {
-  // Format seconds to 00 : 48 : 34 (mins : secs : ms)
-  const formatDigitalTime = (secs: number) => {
+  // Format seconds to mm:ss.ms
+  const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
     const remSecs = Math.floor(secs % 60);
     const ms = Math.floor((secs % 1) * 100);
-    return `${mins.toString().padStart(2, '0')} : ${remSecs.toString().padStart(2, '0')} : ${ms.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${remSecs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
   };
 
   return (
-    <header className="h-14 bg-[#11161b] border-b border-[#1f2730] px-3.5 flex items-center justify-between select-none z-20">
-      {/* Brand & Studio Label (Left) */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2.5">
-          {/* Glowing Red Camera/Eye Icon Badge */}
-          <div className="w-8 h-8 rounded-lg bg-[#161c22] border border-[#27323c] flex items-center justify-center shadow-inner">
-            <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-[#9b111e] via-[#e63946] to-[#ff6b6b] shadow-[0_0_8px_rgba(230,57,70,0.8)] flex items-center justify-center">
-              <div className="w-1 h-1 rounded-full bg-white opacity-80" />
-            </div>
+    <header className="h-16 bg-[#161b22] border-b border-[#30363d] px-4 flex items-center justify-between select-none z-20">
+      {/* Brand & Project Info */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-[#e63946] to-[#ff4d6d] flex items-center justify-center shadow-lg shadow-[#e63946]/20">
+            <Radio className="w-5 h-5 text-white animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="font-bold tracking-tight text-white text-[13px]">RhapsodyStudio</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold tracking-tight text-white text-lg">RHAPSODY</span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#e63946]/20 text-[#e63946] font-semibold border border-[#e63946]/30">
+                DAW Studio
+              </span>
             </div>
-            <span className="text-[10px] font-mono text-gray-500 font-medium">v 2.11</span>
+            <p className="text-[11px] text-gray-400 font-medium">Untitled Project (44.1kHz / 24-bit)</p>
           </div>
         </div>
       </div>
 
-      {/* Main Hardware Transport Bar (Center) */}
-      <div className="flex items-center gap-2.5">
-        {/* Recessed Hardware Transport Panel */}
-        <div className="flex items-center bg-[#151b22] border border-[#232c36] rounded-lg p-1 gap-1.5 shadow-inner">
-          {/* Stop Button */}
-          <button 
-            onClick={onStop}
-            title="Stop"
-            className="w-7 h-7 bg-[#1c242e] hover:bg-[#25303d] active:bg-[#151b22] text-gray-400 hover:text-white rounded flex items-center justify-center border border-[#2a3542] transition shadow-sm"
-          >
-            <Square className="w-3 h-3 fill-current" />
-          </button>
+      {/* Main Transport Bar */}
+      <div className="flex items-center gap-3">
+        {/* Timecode display */}
+        <div className="bg-[#0e1117] border border-[#30363d] rounded-lg px-3 py-1 font-mono text-center shadow-inner">
+          <div className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Timeline</div>
+          <div className="text-lg font-bold text-[#00f5d4] tracking-wider leading-none">
+            {formatTime(currentTime)}
+          </div>
+        </div>
 
-          {/* Rewind Button */}
+        {/* Transport buttons */}
+        <div className="flex items-center bg-[#0e1117] border border-[#30363d] rounded-lg p-1 gap-1">
           <button 
             onClick={onRewind}
-            title="Rewind"
-            className="w-7 h-7 bg-[#1c242e] hover:bg-[#25303d] active:bg-[#151b22] text-gray-400 hover:text-white rounded flex items-center justify-center border border-[#2a3542] transition shadow-sm"
+            title="Rewind to start"
+            className="p-2 hover:bg-[#21262d] text-gray-300 hover:text-white rounded transition"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-4 h-4" />
           </button>
 
-          {/* Play/Pause Button - Neon Teal/Green Pill */}
           {isPlaying ? (
             <button 
               onClick={onPause}
               title="Pause"
-              className="h-7 px-3.5 bg-[#00f5d4] hover:bg-[#38ef7d] text-black font-bold rounded-md flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(0,245,212,0.4)] transition"
+              className="px-4 py-2 bg-[#ff9e00] hover:bg-[#ffaa1a] text-black font-semibold rounded shadow-md transition flex items-center gap-1.5"
             >
-              <Pause className="w-3.5 h-3.5 fill-black" />
+              <Pause className="w-4 h-4 fill-current" />
+              <span className="text-xs">PAUSE</span>
             </button>
           ) : (
             <button 
               onClick={onPlay}
               title="Play"
-              className="h-7 px-3.5 bg-[#00f5d4] hover:bg-[#38ef7d] text-black font-bold rounded-md flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(0,245,212,0.4)] transition"
+              className="px-4 py-2 bg-[#52b788] hover:bg-[#74c69d] text-black font-semibold rounded shadow-md shadow-[#52b788]/20 transition flex items-center gap-1.5"
             >
-              <Play className="w-3.5 h-3.5 fill-black ml-0.5" />
+              <Play className="w-4 h-4 fill-current" />
+              <span className="text-xs">PLAY</span>
             </button>
           )}
 
-          {/* Fast Forward Button */}
           <button 
-            onClick={onFastForward}
-            title="Fast Forward (+4s)"
-            className="w-7 h-7 bg-[#1c242e] hover:bg-[#25303d] active:bg-[#151b22] text-gray-400 hover:text-white rounded flex items-center justify-center border border-[#2a3542] transition shadow-sm"
+            onClick={onStop}
+            title="Stop"
+            className="p-2 hover:bg-[#21262d] text-gray-300 hover:text-white rounded transition"
           >
-            <FastForward className="w-3 h-3" />
+            <Square className="w-4 h-4" />
           </button>
 
-          {/* Record Button with Red Glowing Dot */}
           <button 
-            onClick={onPlay}
-            title="Record Mode"
-            className="w-7 h-7 bg-[#1c242e] hover:bg-[#25303d] rounded flex items-center justify-center border border-[#2a3542] transition shadow-sm"
+            onClick={onToggleLoop}
+            title="Toggle Loop"
+            className={`p-2 rounded transition ${isLooping ? 'bg-[#e63946]/20 text-[#e63946] border border-[#e63946]/40' : 'text-gray-400 hover:text-white hover:bg-[#21262d]'}`}
           >
-            <div className={`w-2.5 h-2.5 rounded-full bg-[#e63946] shadow-[0_0_6px_rgba(230,57,70,0.9)] ${isPlaying ? 'animate-ping' : ''}`} />
+            <Repeat className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Status Indicators: 11 RE & EQ ON */}
-        <div className="flex flex-col text-[8.5px] font-mono text-gray-400 leading-tight border-r border-[#232c36] pr-2.5">
-          <span>11 RE</span>
-          <span className="text-[#00f5d4]">EQ ON</span>
+        {/* BPM Selector */}
+        <div className="bg-[#0e1117] border border-[#30363d] rounded-lg px-3 py-1 flex items-center gap-2">
+          <span className="text-xs text-gray-400 font-mono font-bold">BPM</span>
+          <input 
+            type="number" 
+            min="50" 
+            max="240"
+            value={bpm}
+            onChange={(e) => onBpmChange(Number(e.target.value))}
+            className="w-14 bg-transparent text-sm font-mono text-white text-right focus:outline-none focus:ring-1 focus:ring-[#e63946] rounded px-1"
+          />
         </div>
 
-        {/* Digital LCD Timecode Screen (00 : 48 : 34) */}
-        <div className="bg-[#0b0e12] border border-[#232c36] rounded-lg px-3.5 py-1 flex flex-col items-center shadow-inner">
-          <div className="text-sm font-bold text-[#00f5d4] digital-lcd tracking-widest leading-none">
-            {formatDigitalTime(currentTime)}
-          </div>
-        </div>
-
-        {/* Helper Recording Label */}
-        <div className="flex flex-col text-[8px] font-mono uppercase text-gray-500 leading-tight">
-          <span className="text-gray-400 font-semibold">RECORDING</span>
-          <span>SPACE TO START</span>
+        {/* Master Volume */}
+        <div className="flex items-center gap-2 bg-[#0e1117] border border-[#30363d] rounded-lg px-3 py-1.5">
+          <Volume2 className="w-4 h-4 text-gray-400" />
+          <input 
+            type="range"
+            min="0"
+            max="1.2"
+            step="0.01"
+            value={masterVolume}
+            onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
+            className="w-20 accent-[#e63946] h-1.5 bg-[#21262d] rounded-lg cursor-pointer"
+          />
+          <span className="text-[11px] font-mono text-gray-400 w-8 text-right">
+            {Math.round(masterVolume * 100)}%
+          </span>
         </div>
       </div>
 
-      {/* Utility Controls & Profile (Right) */}
+      {/* Instruments, AI Assistant & Settings Tools */}
       <div className="flex items-center gap-2">
-        {/* Project Folder */}
         <button 
           onClick={onOpenDrumPads}
-          title="Drum Machine & Samples"
-          className="w-7 h-7 bg-[#161c22] hover:bg-[#202730] text-gray-400 hover:text-white rounded-lg flex items-center justify-center border border-[#232c36] transition"
+          className="px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-gray-200 text-xs font-medium rounded-lg border border-[#30363d] transition flex items-center gap-1.5"
+          title="Open Drum Machine"
         >
-          <Folder className="w-3.5 h-3.5" />
+          <CircleDot className="w-3.5 h-3.5 text-[#ff9e00]" />
+          <span>Drums</span>
         </button>
 
-        {/* Lower Console Mixer Toggle */}
-        <button 
-          onClick={onToggleConsole}
-          title={isConsoleOpen ? "Hide Lower Console" : "Show Lower Console Rack"}
-          className={`w-7 h-7 rounded-lg flex items-center justify-center border transition ${
-            isConsoleOpen 
-              ? 'bg-[#00f5d4]/20 border-[#00f5d4]/50 text-[#00f5d4]' 
-              : 'bg-[#161c22] border-[#232c36] text-gray-400 hover:text-white hover:bg-[#202730]'
-          }`}
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Mic / Input */}
         <button 
           onClick={onOpenSynth}
-          title="Synth Keys"
-          className="w-7 h-7 bg-[#161c22] hover:bg-[#202730] text-gray-400 hover:text-white rounded-lg flex items-center justify-center border border-[#232c36] transition"
+          className="px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-gray-200 text-xs font-medium rounded-lg border border-[#30363d] transition flex items-center gap-1.5"
+          title="Open Polyphonic Synthesizer"
         >
-          <Mic className="w-3.5 h-3.5" />
+          <Music className="w-3.5 h-3.5 text-[#00f5d4]" />
+          <span>Keys</span>
         </button>
 
-        {/* Settings */}
         <button 
-          onClick={onOpenSettings}
-          title="Settings & GoAPI Key"
-          className="w-7 h-7 bg-[#161c22] hover:bg-[#202730] text-gray-400 hover:text-white rounded-lg flex items-center justify-center border border-[#232c36] transition"
+          onClick={onOpenEffects}
+          className="px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] text-gray-200 text-xs font-medium rounded-lg border border-[#30363d] transition flex items-center gap-1.5"
+          title="Master Effects Rack"
         >
-          <Settings className="w-3.5 h-3.5" />
+          <Sliders className="w-3.5 h-3.5 text-[#9d4edd]" />
+          <span>FX</span>
         </button>
 
-        {/* AI Studio Assistant Toggle */}
+        <div className="w-[1px] h-6 bg-[#30363d] mx-1" />
+
+        {/* AI Assistant Flyout Toggle (Suno / Udio Generator) */}
         <button 
           onClick={onToggleAIAssistant}
-          className={`h-7 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition ${
-            isAIDrawerOpen
-              ? 'bg-gradient-to-r from-[#e63946] to-[#9d4edd] text-white border-transparent shadow-[0_0_10px_rgba(230,57,70,0.4)]'
-              : 'bg-[#161c22] hover:bg-[#202730] text-gray-300 border-[#232c36] hover:border-[#00f5d4]/40'
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition flex items-center gap-2 shadow-lg ${
+            isAIDrawerOpen 
+              ? 'bg-gradient-to-r from-[#e63946] to-[#9d4edd] text-white border-transparent shadow-[#e63946]/30' 
+              : 'bg-[#21262d] hover:bg-[#30363d] text-white border-[#e63946]/40 hover:border-[#e63946]'
           }`}
         >
-          <Sparkles className="w-3 h-3 text-[#00f5d4]" />
-          <span className="text-[11px]">AI Studio</span>
+          <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-spin" style={{ animationDuration: '4s' }} />
+          <span>AI Studio</span>
+          <span className="text-[10px] bg-black/40 px-1 py-0.2 rounded font-mono text-gray-300">
+            Suno/Udio
+          </span>
         </button>
 
-        <div className="w-[1px] h-5 bg-[#232c36] mx-0.5" />
-
-        {/* User Profile Chip */}
-        <div className="flex items-center gap-2 pl-1 cursor-pointer hover:opacity-90">
-          <div className="text-right leading-none hidden sm:block">
-            <span className="text-[9px] text-gray-500 block">Hello,</span>
-            <span className="text-[11px] font-semibold text-gray-200">Mehrdad Adineh</span>
-          </div>
-          <div className="w-7 h-7 rounded-full overflow-hidden border border-[#2e3a47] shadow-sm">
-            <img 
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" 
-              alt="User Avatar"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
+        <button 
+          onClick={onOpenSettings}
+          className="p-2 text-gray-400 hover:text-white hover:bg-[#21262d] rounded-lg transition"
+          title="Studio Settings & GoAPI Key"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );
