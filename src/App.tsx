@@ -1,411 +1,366 @@
-import React, { useState, useEffect } from 'react';
-import { Track, AIGenerationResult } from './types';
-import { audioEngine } from './audio/audioEngine';
+import React, { useState } from 'react';
+import { Song, AppTab, AIProvider } from './types';
 import { AIService } from './services/aiService';
-import { Header } from './components/Header';
-import { Timeline } from './components/Timeline';
-import { AIAssistantDrawer } from './components/AIAssistantDrawer';
-import { DrumPadsModal } from './components/DrumPadsModal';
-import { SynthKeyboardModal } from './components/SynthKeyboardModal';
-import { EffectsRackModal } from './components/EffectsRackModal';
+import { SunoSidebar } from './components/SunoSidebar';
+import { SunoCreatePanel } from './components/SunoCreatePanel';
+import { SunoTrackCard } from './components/SunoTrackCard';
+import { SunoExploreView } from './components/SunoExploreView';
+import { SunoLibraryView } from './components/SunoLibraryView';
+import { SunoPlayerBar } from './components/SunoPlayerBar';
+import { SunoLyricsModal } from './components/SunoLyricsModal';
+import { SunoStemsModal } from './components/SunoStemsModal';
 import { SettingsModal } from './components/SettingsModal';
+import { 
+  Sparkles, 
+  Loader2, 
+  Search, 
+  Layers, 
+  SlidersHorizontal,
+  Flame,
+  Radio,
+  Clock
+} from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Transport State
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [bpm, setBpm] = useState(120);
-  const [masterVolume, setMasterVolume] = useState(0.85);
-  const [isLooping, setIsLooping] = useState(false);
-  const [zoom] = useState(24); // 24px per second
+  // Navigation & Tabs
+  const [currentTab, setCurrentTab] = useState<AppTab>('create');
+  const [credits, setCredits] = useState<number>(50);
 
-  // Active Modals & Flyouts
-  const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(false);
-  const [isDrumModalOpen, setIsDrumModalOpen] = useState(false);
-  const [isSynthModalOpen, setIsSynthModalOpen] = useState(false);
-  const [isEffectsModalOpen, setIsEffectsModalOpen] = useState(false);
+  // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const [showLyricsModal, setShowLyricsModal] = useState(false);
+  const [stemModalSong, setStemModalSong] = useState<Song | null>(null);
 
-  // Initial Tracks with synthesized demo loops so user can hear music immediately!
-  const [tracks, setTracks] = useState<Track[]>(() => {
-    // Generate demo audio buffers
-    const drumLoopBuffer = audioEngine.createSyntheticMusicLoop('drums', 8, 120);
-    const synthLoopBuffer = audioEngine.createSyntheticMusicLoop('synth', 8, 120);
-
-    return [
-      {
-        id: 'track_drums',
-        name: 'Drum Groove (Beat)',
-        type: 'drums',
-        color: '#ff9e00',
-        muted: false,
-        solo: false,
-        volume: 0.9,
-        pan: 0,
-        clips: [
-          {
-            id: 'clip_drums_1',
-            name: 'Classic 808 Groove',
-            startTime: 0,
-            duration: 8,
-            audioBuffer: drumLoopBuffer,
-            color: '#ff9e00'
-          },
-          {
-            id: 'clip_drums_2',
-            name: 'Classic 808 Groove (Rep)',
-            startTime: 8,
-            duration: 8,
-            audioBuffer: drumLoopBuffer,
-            color: '#ff9e00'
-          }
-        ],
-        effects: {
-          filterCutoff: 20000,
-          filterType: 'lowpass',
-          delayTime: 0,
-          delayFeedback: 0,
-          reverbWet: 0,
-          distortion: 0
-        }
-      },
-      {
-        id: 'track_synth',
-        name: 'Synth Chords & Arp',
-        type: 'synth',
-        color: '#00f5d4',
-        muted: false,
-        solo: false,
-        volume: 0.85,
-        pan: -0.15,
-        clips: [
-          {
-            id: 'clip_synth_1',
-            name: 'Dreamy Chords Loop',
-            startTime: 0,
-            duration: 8,
-            audioBuffer: synthLoopBuffer,
-            color: '#00f5d4'
-          },
-          {
-            id: 'clip_synth_2',
-            name: 'Dreamy Chords Loop',
-            startTime: 8,
-            duration: 8,
-            audioBuffer: synthLoopBuffer,
-            color: '#00f5d4'
-          }
-        ],
-        effects: {
-          filterCutoff: 18000,
-          filterType: 'lowpass',
-          delayTime: 0,
-          delayFeedback: 0,
-          reverbWet: 0,
-          distortion: 0
-        }
-      },
-      {
-        id: 'track_vocal',
-        name: 'Vocal / AI Lead',
-        type: 'audio',
-        color: '#e63946',
-        muted: false,
-        solo: false,
-        volume: 1.0,
-        pan: 0.1,
-        clips: [],
-        effects: {
-          filterCutoff: 20000,
-          filterType: 'lowpass',
-          delayTime: 0,
-          delayFeedback: 0,
-          reverbWet: 0,
-          distortion: 0
-        }
-      }
-    ];
+  // Player State
+  const [currentSong, setCurrentSong] = useState<Song | null>(() => {
+    const initial = AIService.getInitialExploreSongs();
+    return initial.length > 0 ? initial[0] : null;
   });
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
-  // Keep AudioEngine time in sync
-  useEffect(() => {
-    const unsub = audioEngine.addTimeListener((time) => {
-      setCurrentTime(time);
-      if (isLooping && time >= 16) {
-        audioEngine.seek(0, tracks, bpm);
-      }
-    });
-    return unsub;
-  }, [isLooping, tracks, bpm]);
+  // Songs State
+  const [songs, setSongs] = useState<Song[]>(() => AIService.getInitialExploreSongs());
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationStatus, setGenerationStatus] = useState<string>('');
 
-  // Master Volume sync
-  useEffect(() => {
-    audioEngine.setMasterVolume(masterVolume);
-  }, [masterVolume]);
+  // Prefill Create Panel State (from Remix or Extend)
+  const [createPrefill, setCreatePrefill] = useState<{
+    prompt?: string;
+    tags?: string;
+    title?: string;
+  }>({});
 
-  // Playback Handlers
-  const handlePlay = () => {
-    setIsPlaying(true);
-    audioEngine.play(tracks, bpm, (t) => setCurrentTime(t));
-  };
-
-  const handlePause = () => {
-    setIsPlaying(false);
-    audioEngine.pause();
-  };
-
-  const handleStop = () => {
-    setIsPlaying(false);
-    audioEngine.stop();
-    setCurrentTime(0);
-  };
-
-  const handleRewind = () => {
-    audioEngine.seek(0, tracks, bpm);
-    setCurrentTime(0);
-  };
-
-  const handleSeek = (seconds: number) => {
-    setCurrentTime(seconds);
-    audioEngine.seek(seconds, tracks, bpm);
-  };
-
-  // Track Handlers
-  const handleUpdateTrack = (trackId: string, updated: Partial<Track>) => {
-    setTracks(prev => {
-      const next = prev.map(t => t.id === trackId ? { ...t, ...updated } : t);
-      const changedTrack = next.find(t => t.id === trackId);
-      if (changedTrack) {
-        audioEngine.updateTrackNodes(changedTrack);
-      }
-      return next;
-    });
-  };
-
-  const handleDeleteTrack = (trackId: string) => {
-    audioEngine.unregisterTrack(trackId);
-    setTracks(prev => prev.filter(t => t.id !== trackId));
-    if (selectedTrackId === trackId) {
-      setSelectedTrackId(null);
+  // Audio Playback Controls
+  const handlePlaySong = (song: Song) => {
+    if (currentSong?.id === song.id) {
+      setIsPlaying(!isPlaying);
+    } else {
+      setCurrentSong(song);
+      setIsPlaying(true);
     }
   };
 
-  const handleAddTrack = (type: 'audio' | 'synth' | 'drums') => {
-    const colors = {
-      audio: '#e63946',
-      synth: '#00f5d4',
-      drums: '#ff9e00'
-    };
-
-    const newTrack: Track = {
-      id: 'track_' + Math.random().toString(36).substring(2, 9),
-      name: `New ${type.charAt(0).toUpperCase() + type.slice(1)} Track`,
-      type,
-      color: colors[type],
-      muted: false,
-      solo: false,
-      volume: 0.9,
-      pan: 0,
-      clips: [],
-      effects: {
-        filterCutoff: 20000,
-        filterType: 'lowpass',
-        delayTime: 0,
-        delayFeedback: 0,
-        reverbWet: 0,
-        distortion: 0
-      }
-    };
-
-    audioEngine.registerTrack(newTrack);
-    setTracks(prev => [...prev, newTrack]);
+  const handleTogglePlay = () => {
+    setIsPlaying(!isPlaying);
   };
 
-  const handleDeleteClip = (trackId: string, clipId: string) => {
-    setTracks(prev => prev.map(t => {
-      if (t.id === trackId) {
-        return {
-          ...t,
-          clips: t.clips.filter(c => c.id !== clipId)
-        };
+  const handleNext = () => {
+    if (!currentSong || songs.length === 0) return;
+    const currentIndex = songs.findIndex(s => s.id === currentSong.id);
+    const nextIndex = (currentIndex + 1) % songs.length;
+    setCurrentSong(songs[nextIndex]);
+    setIsPlaying(true);
+  };
+
+  const handlePrevious = () => {
+    if (!currentSong || songs.length === 0) return;
+    const currentIndex = songs.findIndex(s => s.id === currentSong.id);
+    const prevIndex = (currentIndex - 1 + songs.length) % songs.length;
+    setCurrentSong(songs[prevIndex]);
+    setIsPlaying(true);
+  };
+
+  const handleToggleLike = (songId: string) => {
+    setSongs(prev => prev.map(s => {
+      if (s.id === songId) {
+        return { ...s, isLiked: !s.isLiked };
       }
-      return t;
+      return s;
     }));
+
+    if (currentSong?.id === songId) {
+      setCurrentSong(prev => prev ? { ...prev, isLiked: !prev.isLiked } : null);
+    }
   };
 
-  /**
-   * Insert AI Clip into Rhapsody timeline as a track
-   */
-  const handleAddClipFromAI = async (
-    result: AIGenerationResult,
-    audioUrl?: string,
-    trackType: 'audio' | 'synth' | 'drums' = 'audio'
-  ) => {
-    const newClip = await AIService.createClipFromAI(result, audioUrl, 0);
+  const handleDeleteSong = (songId: string) => {
+    setSongs(prev => prev.filter(s => s.id !== songId));
+    if (currentSong?.id === songId) {
+      setIsPlaying(false);
+      setCurrentSong(null);
+    }
+  };
 
-    // Look for an existing empty track or create a new dedicated track
-    setTracks(prev => {
-      const existingEmpty = prev.find(t => t.clips.length === 0 && t.type === trackType);
-      if (existingEmpty) {
-        return prev.map(t => t.id === existingEmpty.id ? { ...t, clips: [...t.clips, newClip] } : t);
-      }
+  // Remix & Extend Prompt Helpers
+  const handleUsePrompt = (song: Song) => {
+    setCreatePrefill({
+      prompt: song.prompt,
+      tags: song.tags,
+      title: `${song.title} (Remix)`
+    });
+    setCurrentTab('create');
+  };
 
-      // Create new track for this AI clip
-      const newTrack: Track = {
-        id: 'track_ai_' + Math.random().toString(36).substring(2, 9),
-        name: `[AI] ${result.title.slice(0, 16)}`,
-        type: trackType,
-        color: result.provider === 'suno' ? '#e63946' : '#9d4edd',
-        muted: false,
-        solo: false,
-        volume: 0.95,
-        pan: 0,
-        clips: [newClip],
-        effects: {
-          filterCutoff: 20000,
-          filterType: 'lowpass',
-          delayTime: 0,
-          delayFeedback: 0,
-          reverbWet: 0,
-          distortion: 0
-        }
+  const handleExtendSong = (song: Song) => {
+    setCreatePrefill({
+      prompt: `Continuation of ${song.title}: ${song.prompt}`,
+      tags: song.tags,
+      title: `${song.title} (Part 2)`
+    });
+    setCurrentTab('create');
+  };
+
+  // Stem Separation Trigger
+  const handleSplitStems = (song: Song) => {
+    // If not already separated, inject simulated high-quality stem links
+    if (!song.vocalStemUrl || !song.instrumentalStemUrl) {
+      const updated = {
+        ...song,
+        vocalStemUrl: 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
+        instrumentalStemUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg'
+      };
+      setSongs(prev => prev.map(s => s.id === song.id ? updated : s));
+      setStemModalSong(updated);
+    } else {
+      setStemModalSong(song);
+    }
+  };
+
+  // Music Generation Handler
+  const handleGenerate = async (params: {
+    provider: AIProvider;
+    model: string;
+    prompt: string;
+    tags: string;
+    title: string;
+    lyrics?: string;
+    isInstrumental: boolean;
+  }) => {
+    if (credits < 5) {
+      alert('You need at least 5 credits to generate a new track. Credits reset daily.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationStatus('Submitting generation task...');
+    setCredits(prev => Math.max(0, prev - 5));
+
+    const tempId = `gen_${Date.now()}`;
+    const placeholderSong: Song = {
+      id: tempId,
+      title: params.title || 'Generating Title...',
+      prompt: params.prompt,
+      tags: params.tags,
+      lyrics: params.lyrics,
+      isInstrumental: params.isInstrumental,
+      provider: params.provider,
+      model: params.model,
+      audioUrl: '',
+      imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop',
+      duration: 180,
+      createdAt: 'Just now',
+      status: 'generating'
+    };
+
+    setSongs(prev => [placeholderSong, ...prev]);
+
+    try {
+      // 1. Submit Generation
+      const { taskId } = await AIService.generateMusic({
+        provider: params.provider,
+        prompt: params.prompt,
+        tags: params.tags,
+        title: params.title,
+        lyrics: params.lyrics,
+        isInstrumental: params.isInstrumental
+      });
+
+      setGenerationStatus('Synthesizing audio and harmonies...');
+
+      // 2. Poll for Completion
+      const result = await AIService.pollTask(taskId, params.provider, (status) => {
+        setGenerationStatus(`Processing: ${status}...`);
+      });
+
+      // 3. Update Song Record
+      const completedSong: Song = {
+        ...placeholderSong,
+        title: result.title || params.title,
+        status: 'complete',
+        audioUrl: result.audioUrls[0] || 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        imageUrl: `https://picsum.photos/seed/${tempId}/400/400`,
+        duration: result.duration || 180,
+        vocalStemUrl: result.vocalStemUrl || 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
+        instrumentalStemUrl: result.instrumentalStemUrl || 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg'
       };
 
-      audioEngine.registerTrack(newTrack);
-      return [...prev, newTrack];
-    });
-  };
-
-  /**
-   * Split AI generated song into 2 separate DAW tracks: Vocal & Instrumental
-   */
-  const handleSplitStemsFromAI = async (result: AIGenerationResult) => {
-    // 1. Vocal Stem
-    const vocalClip = await AIService.createClipFromAI(
-      { ...result, title: `${result.title} (Vocals)` },
-      result.vocalStemUrl || result.audioUrls[0],
-      0
-    );
-    vocalClip.color = '#e63946';
-
-    // 2. Instrumental Stem
-    const instClip = await AIService.createClipFromAI(
-      { ...result, title: `${result.title} (Inst)` },
-      result.instrumentalStemUrl || result.audioUrls[0],
-      0
-    );
-    instClip.color = '#00f5d4';
-
-    const vocalTrack: Track = {
-      id: 'track_vocal_' + Math.random().toString(36).substring(2, 8),
-      name: `[Stem] ${result.title.slice(0, 12)} (Vocal)`,
-      type: 'audio',
-      color: '#e63946',
-      muted: false,
-      solo: false,
-      volume: 1.0,
-      pan: 0,
-      clips: [vocalClip],
-      effects: {
-        filterCutoff: 20000,
-        filterType: 'lowpass',
-        delayTime: 0,
-        delayFeedback: 0,
-        reverbWet: 0,
-        distortion: 0
-      }
-    };
-
-    const instTrack: Track = {
-      id: 'track_inst_' + Math.random().toString(36).substring(2, 8),
-      name: `[Stem] ${result.title.slice(0, 12)} (Instrumental)`,
-      type: 'synth',
-      color: '#00f5d4',
-      muted: false,
-      solo: false,
-      volume: 0.9,
-      pan: 0,
-      clips: [instClip],
-      effects: {
-        filterCutoff: 20000,
-        filterType: 'lowpass',
-        delayTime: 0,
-        delayFeedback: 0,
-        reverbWet: 0,
-        distortion: 0
-      }
-    };
-
-    audioEngine.registerTrack(vocalTrack);
-    audioEngine.registerTrack(instTrack);
-    setTracks(prev => [...prev, vocalTrack, instTrack]);
+      setSongs(prev => prev.map(s => s.id === tempId ? completedSong : s));
+      setCurrentSong(completedSong);
+      setIsPlaying(true);
+    } catch (err: any) {
+      console.error('Generation Error:', err);
+      setSongs(prev => prev.map(s => {
+        if (s.id === tempId) {
+          return {
+            ...s,
+            status: 'failed',
+            title: `${s.title} (Failed)`
+          };
+        }
+        return s;
+      }));
+      alert(`Generation notice: ${err.message || 'Task timed out'}`);
+    } finally {
+      setIsGenerating(false);
+      setGenerationStatus('');
+    }
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0e1117] text-white">
-      {/* Header Transport Bar */}
-      <Header
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        bpm={bpm}
-        masterVolume={masterVolume}
-        isLooping={isLooping}
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onStop={handleStop}
-        onRewind={handleRewind}
-        onToggleLoop={() => setIsLooping(!isLooping)}
-        onBpmChange={setBpm}
-        onMasterVolumeChange={setMasterVolume}
-        onOpenDrumPads={() => setIsDrumModalOpen(true)}
-        onOpenSynth={() => setIsSynthModalOpen(true)}
-        onOpenEffects={() => setIsEffectsModalOpen(true)}
-        onToggleAIAssistant={() => setIsAIDrawerOpen(!isAIDrawerOpen)}
+    <div className="flex h-screen w-screen overflow-hidden bg-[#090b0e] text-white font-sans antialiased">
+      {/* 1. Left Suno Sidebar Navigation */}
+      <SunoSidebar
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        isAIDrawerOpen={isAIDrawerOpen}
+        credits={credits}
       />
 
-      {/* Main Timeline Workspace */}
-      <Timeline
-        tracks={tracks}
-        currentTime={currentTime}
-        bpm={bpm}
-        zoom={zoom}
-        onSeek={handleSeek}
-        onUpdateTrack={handleUpdateTrack}
-        onDeleteTrack={handleDeleteTrack}
-        onAddTrack={handleAddTrack}
-        onDeleteClip={handleDeleteClip}
-        onOpenAIAssistant={() => setIsAIDrawerOpen(true)}
+      {/* 2. Main Content View Area */}
+      <main className="flex-1 flex overflow-hidden relative">
+        {/* TAB 1: CREATE VIEW (Split Panel like Suno.com) */}
+        {currentTab === 'create' && (
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Panel: Form & Generator Settings */}
+            <SunoCreatePanel
+              onGenerate={handleGenerate}
+              isGenerating={isGenerating}
+              credits={credits}
+              initialPrompt={createPrefill.prompt}
+              initialTags={createPrefill.tags}
+              initialTitle={createPrefill.title}
+            />
+
+            {/* Right Panel: Live Generation Feed & Songs List */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 pb-28 flex flex-col gap-6">
+              {/* Header Feed Bar */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#1c232f]">
+                <div>
+                  <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                    <span>Recent Creations</span>
+                    <span className="text-xs font-mono font-normal text-gray-500">
+                      ({songs.length} tracks)
+                    </span>
+                  </h1>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Your real-time generated Suno and Udio tracks
+                  </p>
+                </div>
+              </div>
+
+              {/* Generating In-Progress Card */}
+              {isGenerating && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#1f1625] via-[#1a1f2c] to-[#151c27] border border-[#ff3366]/40 shadow-xl flex items-center justify-between gap-4 animate-pulse">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-[#ff3366]/20 border border-[#ff3366]/40 flex items-center justify-center text-[#ff3366]">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-white">Generating Track...</span>
+                        <span className="text-[10px] bg-[#ff3366] text-white px-1.5 py-0.2 rounded font-mono font-bold">
+                          LIVE
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {generationStatus || 'Sending prompt to AI model...'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Creations Feed List */}
+              <div className="flex flex-col gap-3">
+                {songs.map(song => (
+                  <SunoTrackCard
+                    key={song.id}
+                    song={song}
+                    isPlaying={currentSong?.id === song.id && isPlaying}
+                    onPlay={handlePlaySong}
+                    onToggleLike={handleToggleLike}
+                    onSplitStems={handleSplitStems}
+                    onExtend={handleExtendSong}
+                    onDelete={handleDeleteSong}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: EXPLORE VIEW (Discover Trending Grid) */}
+        {currentTab === 'explore' && (
+          <SunoExploreView
+            songs={songs}
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+            onPlaySong={handlePlaySong}
+            onToggleLike={handleToggleLike}
+            onUsePrompt={handleUsePrompt}
+            onSplitStems={handleSplitStems}
+          />
+        )}
+
+        {/* TAB 3: LIBRARY VIEW (User Saved & Stems) */}
+        {currentTab === 'library' && (
+          <SunoLibraryView
+            songs={songs}
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+            onPlaySong={handlePlaySong}
+            onToggleLike={handleToggleLike}
+            onSplitStems={handleSplitStems}
+            onExtend={handleExtendSong}
+            onDelete={handleDeleteSong}
+            onGoToCreate={() => setCurrentTab('create')}
+          />
+        )}
+      </main>
+
+      {/* 3. Sticky Bottom Audio Player Bar */}
+      <SunoPlayerBar
+        currentSong={currentSong}
+        isPlaying={isPlaying}
+        onTogglePlay={handleTogglePlay}
+        onNext={handleNext}
+        onPrevious={handlePrevious}
+        onToggleLike={handleToggleLike}
+        onToggleLyrics={() => setShowLyricsModal(!showLyricsModal)}
+        showLyrics={showLyricsModal}
       />
 
-      {/* AI Assistant Flyout (Suno & Udio Generator) */}
-      <AIAssistantDrawer
-        isOpen={isAIDrawerOpen}
-        onClose={() => setIsAIDrawerOpen(false)}
-        onAddClipToDAW={handleAddClipFromAI}
-        onSplitStemsToDAW={handleSplitStemsFromAI}
+      {/* 4. Modals */}
+      <SunoLyricsModal
+        song={currentSong}
+        isOpen={showLyricsModal}
+        onClose={() => setShowLyricsModal(false)}
       />
 
-      {/* Modals */}
-      <DrumPadsModal
-        isOpen={isDrumModalOpen}
-        onClose={() => setIsDrumModalOpen(false)}
-      />
-
-      <SynthKeyboardModal
-        isOpen={isSynthModalOpen}
-        onClose={() => setIsSynthModalOpen(false)}
-      />
-
-      <EffectsRackModal
-        isOpen={isEffectsModalOpen}
-        onClose={() => setIsEffectsModalOpen(false)}
-        tracks={tracks}
-        selectedTrackId={selectedTrackId}
-        onSelectTrack={setSelectedTrackId}
-        onUpdateTrackEffects={(trackId, effects) => handleUpdateTrack(trackId, { effects })}
+      <SunoStemsModal
+        song={stemModalSong}
+        isOpen={!!stemModalSong}
+        onClose={() => setStemModalSong(null)}
       />
 
       <SettingsModal
@@ -415,4 +370,6 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
 export default App;
+

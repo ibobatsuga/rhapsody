@@ -1,5 +1,4 @@
-import { AIGenerationRequest, AIGenerationResult, AudioClip } from '../types';
-import { audioEngine } from '../audio/audioEngine';
+import { AIGenerationRequest, AIGenerationResult, Song, AIProvider } from '../types';
 
 export class AIService {
   private static STORAGE_KEY = 'rhapsody_goapi_key';
@@ -44,11 +43,11 @@ export class AIService {
    */
   public static async pollTask(
     taskId: string,
-    provider: 'suno' | 'udio',
+    provider: AIProvider,
     onProgress?: (status: string) => void
   ): Promise<AIGenerationResult> {
     const apiKey = this.getApiKey();
-    const maxAttempts = 40; // 40 * 3s = 120 seconds max
+    const maxAttempts = 40;
     let attempts = 0;
 
     return new Promise((resolve, reject) => {
@@ -80,7 +79,7 @@ export class AIService {
               audioUrls: data.audioUrls || [],
               vocalStemUrl: data.vocalStemUrl,
               instrumentalStemUrl: data.instrumentalStemUrl,
-              duration: data.duration || 30,
+              duration: data.duration || 32,
               createdAt: Date.now()
             });
           } else if (data.status === 'failed' || data.status === 'error') {
@@ -101,37 +100,86 @@ export class AIService {
   }
 
   /**
-   * Convert an AI result into a playable AudioClip
+   * AI Lyrics Generator Assistant (similar to Suno's AI Lyric Generator)
    */
-  public static async createClipFromAI(
-    result: AIGenerationResult,
-    audioUrl?: string,
-    startTime = 0
-  ): Promise<AudioClip> {
-    const targetUrl = audioUrl || result.audioUrls[0];
-    let audioBuffer: AudioBuffer;
+  public static generateRandomLyrics(topic: string, genre: string): string {
+    const themes = [
+      `[Verse 1]\nNeon lights reflect the rainy street\nEchoes of the city in my beat\nChasing shadows under velvet skies\nNo more questions, no more compromises\n\n[Chorus]\nTake me higher through the neon haze\nLost inside this electric maze\nWe are timeless, running with the sound\nFeet won't ever touch the ground\n\n[Verse 2]\nFrequencies are buzzing through the air\nAnalog warmth is everywhere\nFeel the sub-bass shaking in the night\nEverything is gonna be alright\n\n[Outro]\nLost in the frequency...\nJust you and me...`,
+      `[Verse 1]\nSunlight fades behind the coastal hills\nSipping coffee, watching time stand still\nAcoustic chords are floating in the breeze\nWhispers dancing through the olive trees\n\n[Chorus]\nHere's to the moments that we never planned\nFootprints washing away in the sand\nLet the ocean carry us away\nInto the golden light of another day\n\n[Outro]\nAnother day...\nCarry us away...`,
+      `[Verse 1]\nHeavy distortion in the engine roar\nWe've never felt this alive before\nBreaking out of the cybernetic cage\nTurning over a brand new page\n\n[Chorus]\nIgnite the spark, break through the firewall\nStanding tall against the digital wall\nUnstoppable force, unbroken chain\nRunning free through the acid rain\n\n[Outro]\nUnstoppable...\nRunning free...`
+    ];
+    return themes[Math.floor(Math.random() * themes.length)];
+  }
 
-    if (targetUrl) {
-      try {
-        audioBuffer = await audioEngine.loadAudio(targetUrl);
-      } catch (e) {
-        console.warn('Network audio load failed, generating fallback synthetic loop:', e);
-        audioBuffer = audioEngine.createSyntheticMusicLoop(result.prompt, 8, 120);
+  /**
+   * Initial Curated Songs (Explore Feed)
+   */
+  public static getInitialExploreSongs(): Song[] {
+    return [
+      {
+        id: 'suno_exp_1',
+        title: 'Neon Odyssey',
+        prompt: 'Synthwave 80s anthem with retro arpeggiated synths, energetic drums, and soaring vocals',
+        tags: 'synthwave, electronic, retro, 80s, melodic',
+        lyrics: '[Verse 1]\nNeon lights reflect the rainy street...\n[Chorus]\nTake me higher through the neon haze...',
+        isInstrumental: false,
+        provider: 'suno',
+        model: 'v4',
+        audioUrl: 'https://actions.google.com/sounds/v1/music/ambient_hum.ogg',
+        imageUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=400&fit=crop',
+        duration: 184,
+        createdAt: '1 hour ago',
+        status: 'complete',
+        vocalStemUrl: 'https://actions.google.com/sounds/v1/human_voices/applause_cheering.ogg',
+        instrumentalStemUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        isLiked: true
+      },
+      {
+        id: 'suno_exp_2',
+        title: 'Tokyo Midnight Rain',
+        prompt: 'Lo-fi chill hip hop, mellow rhodes piano, rainy day vinyl crackle, relaxed bassline',
+        tags: 'lo-fi, chillhop, jazzy, relaxed, ambient',
+        isInstrumental: true,
+        provider: 'suno',
+        model: 'v3.5',
+        audioUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
+        duration: 156,
+        createdAt: '3 hours ago',
+        status: 'complete',
+        isLiked: false
+      },
+      {
+        id: 'suno_exp_3',
+        title: 'Cyber Valkyrie',
+        prompt: 'Dark electro industrial cyberpunk with gritty distorted bass and aggressive female vocal',
+        tags: 'cyberpunk, darksynth, industrial, bass, heavy',
+        lyrics: '[Verse]\nHeavy distortion in the engine roar...\n[Chorus]\nIgnite the spark...',
+        isInstrumental: false,
+        provider: 'udio',
+        model: 'v1.5',
+        audioUrl: 'https://actions.google.com/sounds/v1/music/ambient_hum.ogg',
+        imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&h=400&fit=crop',
+        duration: 210,
+        createdAt: '5 hours ago',
+        status: 'complete',
+        isLiked: true
+      },
+      {
+        id: 'suno_exp_4',
+        title: 'Golden Sunset Acoustic',
+        prompt: 'Warm indie acoustic pop song, fingerstyle acoustic guitar, gentle vocals, uplifting melody',
+        tags: 'indie pop, acoustic, folk, warm, feelgood',
+        isInstrumental: false,
+        provider: 'suno',
+        model: 'v4',
+        audioUrl: 'https://actions.google.com/sounds/v1/music/acoustic_guitar_duet.ogg',
+        imageUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400&h=400&fit=crop',
+        duration: 172,
+        createdAt: 'Yesterday',
+        status: 'complete',
+        isLiked: false
       }
-    } else {
-      audioBuffer = audioEngine.createSyntheticMusicLoop(result.prompt, 8, 120);
-    }
-
-    return {
-      id: 'clip_' + Math.random().toString(36).substring(2, 9),
-      name: `${result.provider.toUpperCase()}: ${result.title}`,
-      startTime,
-      duration: audioBuffer.duration,
-      audioBuffer,
-      sourceUrl: targetUrl,
-      color: result.provider === 'suno' ? '#e63946' : '#9d4edd',
-      isAiGenerated: true,
-      aiPrompt: result.prompt
-    };
+    ];
   }
 }

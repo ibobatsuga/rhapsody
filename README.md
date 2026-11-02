@@ -1,73 +1,64 @@
-# 🎵 Rhapsody — Next-Gen Web DAW & AI Music Studio
+# 🎵 Rhapsody — AI Music Creation Platform (Suno & Udio Powered)
 
-**Rhapsody** adalah aplikasi Digital Audio Workstation (DAW) berbasis web modern (terinspirasi dari arsitektur BandLab) yang dilengkapi dengan **AI Studio Assistant** (generator musik & stem menggunakan **Suno AI** dan **Udio AI** via **GoAPI**) sebagai fitur tambahan terintegrasi.
-
----
-
-## 🌟 Fitur Utama Rhapsody
-
-### 1. 🎛️ Multitrack Web DAW Timeline (Inti DAW)
-* **Master Transport Bar**: Play, Pause, Stop, Rewind, Loop toggle, Timecode counter presisi milidetik.
-* **Audio Clock & BPM Engine**: Pengaturan tempo (BPM) dengan sinkronisasi clock WebAudio 44.1kHz.
-* **Track Kontrol Individual**:
-  * Solo (S) & Mute (M) per-track.
-  * Volume Fader (dB) & Stereo Panner (-100% L s/d +100% R).
-  * Color coding visual & Track renaming/deletion.
-* **Interactive Timeline Grid**:
-  * Ruler dengan pembagian Bar/Beat musikal.
-  * Click-to-seek playhead seketika.
-  * Interactive audio waveform clips dengan durasi akurat.
-  * Penambahan track tanpa batas (Audio, Synth, Drums).
-
-### 2. 🤖 AI Studio Assistant (Fitur Tambahan: Suno & Udio via GoAPI)
-* **Addon Flyout Drawer**: Tidak mengganggu alur kerja DAW, dapat dibuka/tutup kapan saja melalui tombol `✨ AI Assistant`.
-* **Dua Model AI Pilihan**:
-  * **Suno AI** (v3.5 / v4): Ahli dalam aransemen vokal, struktur lagu, dan variasi melodi.
-  * **Udio AI** (v1.5): Ahli dalam kejernihan fidelity instrumen dan harmoni kompleks.
-* **Mode Pembuatan**:
-  * *Simple Mode*: Prompt deskriptif cepat (misal: *"Synthwave arpeggio 120bpm"*).
-  * *Custom Mode*: Input judul, tags gaya musik, dan lirik manual.
-  * *Instrumental Switch*: Pilihan musik murni tanpa vokal.
-* **Workflow "Add to Timeline"**:
-  * Audio hasil generate dapat diputar langsung di panel preview.
-  * **Satu klik "Add to Timeline"**: Audio otomatis di-decode ke WebAudio buffer dan dimasukkan sebagai track baru di timeline DAW!
-  * **"Split Stems"**: Otomatis memecah lagu hasil generate menjadi 2 track terpisah di DAW: **Track Vokal** & **Track Instrumental**.
-* **Zero-Friction Simulation Mode**: Jika belum memasukkan GoAPI key, sistem tetap dapat menghasilkan audio loop sintetis real-time untuk testing seketika.
-
-### 3. 🎹 Instrumen & Efek Built-in (Web Audio Synthesis)
-* **16-Pad Drum Machine**: Kick, Snare, Hi-Hat, 808 Bass, Clap disintesis langsung tanpa jeda unduhan.
-* **Polyphonic Synthesizer**: Keyboard piano 2-oktaf interaktif dengan pilihan gelombang (Sawtooth, Square, Triangle, Sine) dan kontrol transposer oktaf.
-* **DSP Effects Rack**: Filter frekuensi parametrik (Lowpass, Highpass, Bandpass) dengan sweep cutoff real-time.
+**Rhapsody** adalah platform kreasi dan streaming musik AI mutakhir yang mengadopsi struktur tampilan, menu, alur kerja, dan fungsionalitas mirip **Suno.com**, ditenagai oleh model generasi musik **Suno AI** (v3.5 / v4) dan **Udio AI** (v1.5) via gateway GoAPI.
 
 ---
 
-## 🚀 Cara Menjalankan Rhapsody
+## 🌟 Fitur & Layout Ala Suno.com
 
-Buka terminal dan masuk ke folder proyek:
+### 1. 🧭 Navigasi & Sidebar Kiri (Suno Layout)
+* **Brand & Identity**: Logo Rhapsody AI dengan aksen gradasi neon flame.
+* **Menu Utama**:
+  * **Create**: Panel kreasi musik split-screen (form kreasi di kiri, live feed lagu yang dihasilkan di kanan).
+  * **Explore**: Halaman penemuan musik trending komunitas, pill filter genre (*Synthwave, Lo-Fi, Cyberpunk, Acoustic, EDM*), dan pencarian instan.
+  * **Library**: Koleksi seluruh lagu buatan pengguna, filter lagu favorit (*Liked Songs*), dan hasil pemisahan stem (*Split Stems*).
+* **Credits Tracker**: Indikator kredit harian (50/50) dengan progress bar visual.
+* **GoAPI Settings**: Modal konfigurasi `X-API-Key` GoAPI untuk generasi live tak terbatas.
+
+### 2. 🎛️ Panel Kreasi Musik (Create View)
+* **Simple Mode**: Cukup tulis deskripsi lagu (contoh: *"Synthwave 80s anthem speeding through neon city highways"*).
+* **Custom Mode**:
+  * **AI Lyrics Generator**: Tombol "Make Random Lyrics" untuk merangkai lirik terstruktur (*Verse 1, Chorus, Verse 2, Outro*).
+  * **Style of Music**: Input genre dan tag musik dengan bantuan chip populer (+lo-fi, +synthwave, dll).
+  * **Title Input**: Kustomisasi judul track.
+* **Model Engine Selector**:
+  * **Suno v4**: Model generasi audio fidelity tinggi dengan melodi emosional.
+  * **Suno v3.5**: Model kreasi lagu cepat dengan variasi hook dinamis.
+  * **Udio 1.5**: Model harmoni kompleks dan kedalaman tekstur instrumen.
+* **Instrumental Switch**: Toggle untuk membuat musik murni tanpa vokal vokal.
+* **Cost**: 5 kredit per generasi dengan feedback status live real-time.
+
+### 3. ✂️ Pemisahan Stem AI (Multitrack Stems)
+* Memisahkan lagu menjadi dua track terisolasi:
+  * **Vocal Stem (Acapella)**: Suara vokal utama & harmoni bersih.
+  * **Instrumental Stem (Backing Track)**: Drum, bass, synth, dan instrumen pengiring.
+* Fitur pratinjau audio mandiri dan tombol unduh langsung (*Download MP3*).
+
+### 4. 📻 Bottom Sticky Audio Player (Persistent Player Bar)
+* **Kontrol Pemutaran**: Play/Pause, Previous, Next, Loop toggle, dan volume fader dengan mute switch.
+* **Interactive Scrubber**: Slider posisi lagu real-time dengan counter detik/menit presisi.
+* **Lyrics Karaoke View**: Modal tampilan lirik interaktif dengan blok verse/chorus terformat dan tombol "Copy Lyrics".
+* **Ekspor Audio**: Tombol unduh file MP3 langsung dari player.
+
+---
+
+## 🚀 Menjalankan Rhapsody
 
 ```bash
+# Masuk ke direktori
 cd /Users/ibobatsuga/.gemini/antigravity/scratch/rhapsody
-```
 
-Jalankan perintah berikut:
-
-```bash
+# Jalankan server frontend & backend
 npm run dev
+
+# Jalankan Zero-Failure Security & API Test Suite
+node --test tests/system_audit.test.mjs
 ```
-
-Perintah ini akan menjalankan:
-1. **Backend Server** di `http://localhost:3001` (Relay GoAPI & Audio CORS Proxy).
-2. **Frontend DAW** di `http://localhost:5173`.
-
-Buka browser Anda di:
-👉 **`http://localhost:5173`**
 
 ---
 
-## 🔑 Konfigurasi GoAPI Key (Opsional)
-
-1. Buka aplikasi Rhapsody di browser.
-2. Klik ikon gerigi **Settings (⚙️)** di pojok kanan atas.
-3. Masukkan `X-API-Key` GoAPI Anda.
-4. Klik **Save Configuration** (tersimpan aman di `localStorage` browser Anda).
-5. Jika tanpa API key, Rhapsody akan otomatis menggunakan *Simulation Mode* berkecepatan tinggi dengan loop instrumen terintegrasi.
+## 🛡️ Arsitektur Keamanan & Zero-Defect
+* **SSRF Protection**: Mencegah request proxy ke IP internal / private (RFC 1918) dan loopback.
+* **Rate Limiting**: Sliding window 30 req/min untuk melindungi API gateway dari flooding.
+* **Payload Boundary**: Validasi prompt teks maksimal 2.000 karakter.
+* **Simulation Mode Fallback**: Tetap berfungsi penuh untuk demonstrasi visual dan preview audio jika pengguna belum memasukkan API key.
