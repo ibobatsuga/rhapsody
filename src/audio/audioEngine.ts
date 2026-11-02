@@ -1,8 +1,16 @@
 import { Track } from '../types';
 
+export const EQ_FREQUENCIES = [30, 60, 120, 200, 400, 800, 1500, 3200, 6400, 12800];
+
 class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  private analyserNode: AnalyserNode | null = null;
+  private eqFilters: BiquadFilterNode[] = [];
+  private reverbNode: ConvolverNode | null = null;
+  private delayNode: DelayNode | null = null;
+  private delayFeedbackGain: GainNode | null = null;
+
   private isPlaying: boolean = false;
   private currentTime: number = 0;
   private playStartTime: number = 0;
@@ -25,9 +33,41 @@ class AudioEngine {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       this.ctx = new AudioCtx({ sampleRate: 44100 });
+
+      // Master Gain
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = 0.85;
-      this.masterGain.connect(this.ctx.destination);
+
+      // 10-Band Graphic Equalizer Chain
+      this.eqFilters = EQ_FREQUENCIES.map((freq, idx) => {
+        const filter = this.ctx!.createBiquadFilter();
+        if (idx === 0) {
+          filter.type = 'lowshelf';
+        } else if (idx === EQ_FREQUENCIES.length - 1) {
+          filter.type = 'highshelf';
+        } else {
+          filter.type = 'peaking';
+          filter.Q.value = 1.4;
+        }
+        filter.frequency.value = freq;
+        filter.gain.value = 0;
+        return filter;
+      });
+
+      // Chain EQ filters in series
+      for (let i = 0; i < this.eqFilters.length - 1; i++) {
+        this.eqFilters[i].connect(this.eqFilters[i + 1]);
+      }
+
+      // Analyser Node for Live Spectrum / Oscilloscope
+      this.analyserNode = this.ctx.createAnalyser();
+      this.analyserNode.fftSize = 512;
+      this.analyserNode.smoothingTimeConstant = 0.85;
+
+      // Connect: MasterGain -> EQ Chain -> Analyser -> Destination
+      this.masterGain.connect(this.eqFilters[0]);
+      this.eqFilters[this.eqFilters.length - 1].connect(this.analyserNode);
+      this.analyserNode.connect(this.ctx.destination);
     }
     return this.ctx;
   }
@@ -50,10 +90,29 @@ class AudioEngine {
     }
   }
 
-  /**
-   * Clamps filter frequency strictly below the Nyquist limit (sampleRate / 2)
-   * to prevent DOMException RangeError in WebAudio implementations.
-   */
+  public setEqBandGain(bandIndex: number, gainDb: number) {
+    if (this.eqFilters[bandIndex] && this.ctx) {
+      const clamped = Math.max(-12, Math.min(12, Number.isFinite(gainDb) ? gainDb : 0));
+      this.eqFilters[bandIndex].gain.setValueAtTime(clamped, this.ctx.currentTime);
+    }
+  }
+
+  public getWaveformData(array: Uint8Array): void {
+    if (this.analyserNode) {
+      this.analyserNode.getByteTimeDomainData(array);
+    } else {
+      array.fill(128);
+    }
+  }
+
+  public getFrequencyData(array: Uint8Array): void {
+    if (this.analyserNode) {
+      this.analyserNode.getByteFrequencyData(array);
+    } else {
+      array.fill(0);
+    }
+  }
+
   private getSafeFilterCutoff(requestedHz: number): number {
     const ctx = this.getContext();
     const nyquistLimit = (ctx.sampleRate / 2) - 100;
@@ -147,7 +206,6 @@ class AudioEngine {
           const offsetInClip = Math.max(0, this.currentTime - clipStart);
           const delayUntilPlay = Math.max(0, clipStart - this.currentTime);
 
-          // Auto garbage-collect finished source nodes to prevent memory leaks
           source.onended = () => {
             const index = this.activeSources.indexOf(source);
             if (index !== -1) {
@@ -214,9 +272,6 @@ class AudioEngine {
     this.activeSources = [];
   }
 
-  /**
-   * Load audio file from URL and decode to AudioBuffer
-   */
   public async loadAudio(url: string): Promise<AudioBuffer> {
     await this.resume();
     const ctx = this.getContext();
@@ -233,9 +288,6 @@ class AudioEngine {
     return await ctx.decodeAudioData(arrayBuffer);
   }
 
-  /**
-   * Synthesize Drum Pad Sounds
-   */
   public playDrumSound(type: string, pitch = 1.0) {
     this.init();
     const ctx = this.getContext();
@@ -352,9 +404,6 @@ class AudioEngine {
     }
   }
 
-  /**
-   * Play a Polyphonic Synth Note
-   */
   public playSynthNote(freq: number, type: OscillatorType = 'sawtooth', duration = 0.5) {
     this.init();
     const ctx = this.getContext();
@@ -382,9 +431,6 @@ class AudioEngine {
     osc.stop(now + duration);
   }
 
-  /**
-   * Generate a Synthetic Audio Buffer with validation
-   */
   public createSyntheticMusicLoop(genre: string, durationSec = 8, bpm = 120): AudioBuffer {
     const ctx = this.getContext();
     const sampleRate = ctx.sampleRate;
